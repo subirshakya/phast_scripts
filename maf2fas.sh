@@ -4,7 +4,7 @@ usage()
         echo
         echo "i: input folder"
         echo "o: output folder"
-        echo "n: filename to append (default = file)"
+        echo "n: name append by hal2maf"
         echo "b: bed file"
         echo "s: reference species"
         echo "j: number of parallel nodes (defaults = 1)"
