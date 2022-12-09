@@ -6,7 +6,7 @@ from Bio.Seq import Seq
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--bed", 
+parser.add_argument("--bed",
                     help="bed for given scaffold")
 parser.add_argument("--fasta_header",
                     help="header for fasta")
@@ -14,6 +14,8 @@ parser.add_argument("--out_folder",
                     help="output_folder")
 parser.add_argument("--temp_folder",
                     help="location of temp folder")
+parser.add_argument("--ref_species",
+                    help="reference species")
 args = parser.parse_args()
 
 bed_df = pd.read_csv(args.bed, sep='\t', header=None)
@@ -37,14 +39,14 @@ for index, row in bed_df.iterrows():
                 for taxa in (set_start - set_my):
                     start_dict[taxa].seq = Seq(str(start_dict[taxa].seq) + "N"*seq_size)
             else:
-                start_dict = my_dict            
-            curr_pos += len(my_dict["Brachypodius_atriceps"].seq)
+                start_dict = my_dict
+            curr_pos += len(my_dict[args.ref_species].seq)
         except:
-            curr_pos += 1    
+            curr_pos += 1
             for taxa in start_dict:
                 start_dict[taxa].seq = Seq(str(start_dict[taxa].seq) + "N")
-    try:            
-        with open(os.path.join(args.out_folder,ce_name+"_"+args.fasta_header+"_"+str(start)+"-"+str(stop)+".fa"), 'w') as handle:
+    try:
+        with open(os.path.join(args.out_folder,ce_name+".fa"), 'w') as handle:
             SeqIO.write(start_dict.values(), handle, 'fasta')
     except:
-        print("Failed:", ce_name+"_"+args.fasta_header+"_"+str(start)+"-"+str(stop))
+        print("Failed:", ce_name+"_"+args.fasta_header+"_"+str(start)+"-"+str(stop))          
