@@ -25,7 +25,7 @@ faster () {
         }
 export -f faster
 
-name="file"
+name=""
 parallel=1
 no_args="true"
 while getopts hi:o:n:b:s:j: flag; do
