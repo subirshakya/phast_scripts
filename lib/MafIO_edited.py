@@ -119,8 +119,8 @@ def MafIterator(handle, seq_count=None):
                     SeqRecord(
                         Seq(sequence),
                         id=line_split[1].split(".")[0],
-                        name=line_split[1].split(".")[0],
-                        description="",
+                        name=line_split[1],
+                        description=line_split[1].split(".")[0]+"__"+line_split[2]+"__"+line_split[3]+"__"+line_split[4]+"__"+line_split[5],
                         annotations=anno,
                     )
                 )
@@ -555,7 +555,7 @@ class MafIndexEdit(object):
 
                 yield fetched
 
-    def get_spliced(self, starts, ends, strand=1):
+    def get_spliced(self, starts, ends, ref_sp, strand=1):
         """Return a multiple alignment of the exact sequence range provided.
 
         Accepts two lists of start and end positions on target_seqname, representing
@@ -591,7 +591,8 @@ class MafIndexEdit(object):
 
         # find the union of all IDs in these alignments
         all_seqnames = {sequence.id for multiseq in fetched for sequence in multiseq}
-
+        all_seqnames2 = {sequence.name for multiseq in fetched for sequence in multiseq}
+        all_seq_data = {sequence.description for multiseq in fetched for sequence in multiseq}
         # split every record by base position
         # key: sequence name
         # value: dictionary
@@ -689,7 +690,6 @@ class MafIndexEdit(object):
             multiseq = new_rec
             # loop over the alignment to fill split_by_position
             for gapped_pos in range(0, rec_length):
-                x = 1
                 for seqrec in multiseq:
                     # keep track of this position's value for the target seqname
                     if seqrec.id == self._target_seqname:
@@ -697,10 +697,6 @@ class MafIndexEdit(object):
                     # Here, a real_pos that corresponds to just after a series of "-"
                     # in the reference will "accumulate" the letters found in other sequences
                     # in front of the "-"s
-                    if seqrec.id == "Aquila_chrysaetos":
-                        #print(x)
-                        #print(seqrec.seq)
-                        x += 1
                     split_by_position[seqrec.id][real_pos] += seqrec.seq[gapped_pos]
                 # increment the real_pos counter only when non-gaps are found in
                 # the target_seqname, and we haven't reached the end of the record
@@ -752,6 +748,7 @@ class MafIndexEdit(object):
                         append(filler_char)
 
             subseq[seqid] = "".join(seq_splice)
+
         # make sure we're returning the right number of letters
         if len(subseq[self._target_seqname].replace("-", "")) != expected_letters:
             raise ValueError(
@@ -775,13 +772,26 @@ class MafIndexEdit(object):
 
         # finally, build a MultipleSeqAlignment object for our final sequences
         result_multiseq = []
-
+        meta_ref = [x for x in all_seq_data if x.startswith(ref_sp)]
+        meta_ref = meta_ref[0].split("__")
+        val_offset = starts[0] - int(meta_ref[1])
         for seqid, seq in subseq.items():
             seq = Seq(seq)
-
             seq = seq if strand == ref_first_strand else seq.reverse_complement()
 
-            result_multiseq.append(SeqRecord(seq, id=seqid, name=seqid, description=""))
+            seqname = [x for x in all_seqnames2 if x.startswith(seqid)]
+            
+            meta = [x for x in all_seq_data if x.startswith(seqid)]
+            meta = meta[0].split("__")
+            if meta[3] == "+":
+                meta[3] = 1
+            else:
+                meta[3] = -1
+            result_multiseq.append(SeqRecord(seq, id=seqid, name=seqname[0], 
+                                            annotations =   {'start':int(meta[1])+val_offset, 
+                                                            'srcSize':meta[4],
+                                                            'strand':meta[3]}, 
+                                            description=""))
 
         return MultipleSeqAlignment(result_multiseq)
 
