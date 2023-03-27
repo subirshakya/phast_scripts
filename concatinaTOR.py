@@ -3,6 +3,7 @@ import glob
 from Bio import SeqIO
 from Bio.Seq import Seq
 import os
+import pandas as pd
 
 def list2bed(input_list, output_folder):
     with open(os.path.join(args.output_folder,"charset.txt"), 'a') as handle:
@@ -30,24 +31,35 @@ def dict2fa(input_dict, output_folder, end=False):
 parser = argparse.ArgumentParser()
 parser.add_argument("--fasta_folder", required=True,
                     help="header for fasta")
+parser.add_argument("--bed_file", help="bed file with element details")
 parser.add_argument("--write_interval", type=int, default=5,
                     help="how frequently (files) to write")
 parser.add_argument("--output_folder", required=True,                   
                     help="output_folder")
-parser.add_argument("--omit_missing", default=True)
+parser.add_argument("--omit_missing", action='store_true', default=False)
 parser.add_argument("--n_taxa", type=int, default=1)
-parser.add_argument("--per_taxa", type=float, default=0.5)                    
+parser.add_argument("--per_taxa", type=float, default=0.5)
+parser.add_argument("--recursive", action='store_true', default=False)              
 args = parser.parse_args()
 
 start = 1
 stop = 0
-all_files = glob.glob(args.fasta_folder+"*")
+if args.recursive==True:
+    all_files=all_files = glob.glob(args.fasta_folder+"/**/*.fa", recursive=True)
+else:
+    all_files = glob.glob(args.fasta_folder+"*.fa")
 counter = 1
+
+bed_file = pd.read_csv(args.bed_file, sep='\t', header=None)
 start_dict = {}
 bed_index = []
+ 
 if not os.path.exists(args.output_folder):
     os.makedirs(args.output_folder)
-for each_file in all_files: 
+else:
+    print("Folder exists, stuff will be appended if files exist")
+    
+for each_file in all_files:
     if counter == args.write_interval:
         list2bed(bed_index, args.output_folder)
         dict2fa(start_dict, args.output_folder)
@@ -57,9 +69,7 @@ for each_file in all_files:
         counter = 1
     else:
         my_dict = SeqIO.to_dict(SeqIO.parse(each_file, "fasta"))
-        filename = os.path.splitext(os.path.basename(each_file))[0].split("_")
-        id = filename[0]
-        scaffold = filename[1] + "_" + filename[2]
+        id = os.path.splitext(os.path.basename(each_file))[0]
         if args.omit_missing == True:
             if len(my_dict) >= (args.per_taxa*args.n_taxa):          
                 if len(start_dict) > 0:
@@ -77,11 +87,12 @@ for each_file in all_files:
                 else:
                     start_dict = my_dict
                     pass
-                stop += len(my_dict[list(my_dict.keys())[0]].seq)    
-                bed_index.append((scaffold, start, stop, id))
+                stop += len(my_dict[list(my_dict.keys())[0]].seq)
+                bed_row = bed_file[bed_file[3].str.contains(id)]
+                bed_index.append((bed_row.iloc[0][0], start, stop, id))
                 start = stop+1
                 counter += 1
             else:
-                print ("Omitting "+scaffold+":too few taxa in alignment")   
+                print ("Omitting "+id+":too few taxa in alignment; "+str(len(my_dict))+" of "+str(args.n_taxa))   
 list2bed(bed_index, args.output_folder)
 dict2fa(start_dict, args.output_folder, end=True)
