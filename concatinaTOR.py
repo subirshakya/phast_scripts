@@ -44,12 +44,18 @@ args = parser.parse_args()
 start = 1
 stop = 0
 if args.recursive==True:
-    all_files=all_files = glob.glob(args.fasta_folder+"/**/*.fa", recursive=True)
+    all_files = glob.glob(args.fasta_folder+"/**/*.fa", recursive=True)
 else:
     all_files = glob.glob(args.fasta_folder+"*.fa")
 counter = 1
 
 bed_file = pd.read_csv(args.bed_file, sep='\t', header=None)
+
+#keep only files present in bed file
+files_base = [os.path.basename(x).split(".")[0] for x in all_files]
+keep_files = [all_files[i] for i,x in enumerate(files_base) if x in bed_file[3]]
+
+#initialize
 start_dict = {}
 bed_index = []
  
@@ -58,7 +64,7 @@ if not os.path.exists(args.output_folder):
 else:
     print("Folder exists, stuff will be appended if files exist")
     
-for each_file in all_files:
+for each_file in keep_files:
     if counter == args.write_interval:
         list2bed(bed_index, args.output_folder)
         dict2fa(start_dict, args.output_folder)
@@ -91,6 +97,7 @@ for each_file in all_files:
             start = stop+1
             counter += 1
         else:
-            print ("Omitting "+id+":too few taxa in alignment; "+str(len(my_dict))+" of "+str(args.n_taxa))   
+            print ("Omitting "+id+":too few taxa in alignment; "+str(len(my_dict))+" of "+str(args.n_taxa))  
+            
 list2bed(bed_index, args.output_folder)
 dict2fa(start_dict, args.output_folder, end=True)
