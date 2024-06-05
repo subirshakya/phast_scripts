@@ -53,7 +53,8 @@ bed_file = pd.read_csv(args.bed_file, sep='\t', header=None)
 
 #keep only files present in bed file
 files_base = [os.path.basename(x).split(".")[0] for x in all_files]
-keep_files = [all_files[i] for i,x in enumerate(files_base) if x in bed_file[3]]
+all_files_base = set(bed_file[3])
+keep_files = [all_files[i] for i,x in enumerate(files_base) if x in all_files_base]
 
 #initialize
 start_dict = {}
