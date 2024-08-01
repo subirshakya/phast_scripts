@@ -8,7 +8,7 @@ import pandas as pd
 def list2bed(input_list, output_folder):
     with open(os.path.join(args.output_folder,"charset.txt"), 'a') as handle:
         for each_bed in input_list:
-            handle.writelines(str(each_bed[0])+"\t"+str(each_bed[1])+"\t"+str(each_bed[2])+"\t"+str(each_bed[3])+"\n")
+            handle.writelines(str(each_bed[0])+"\t"+str(each_bed[1]-1)+"\t"+str(each_bed[2])+"\t"+str(each_bed[3])+"\n")
     handle.close()
     
 def dict2fa(input_dict, output_folder, end=False):
@@ -73,32 +73,31 @@ for each_file in keep_files:
         for key in start_dict:
             start_dict[key].seq = Seq("") 
         counter = 1
-    else:
-        my_dict = SeqIO.to_dict(SeqIO.parse(each_file, "fasta"))
-        id = os.path.splitext(os.path.basename(each_file))[0]
-        if len(my_dict) >= (args.per_taxa*args.n_taxa):          
-            if len(start_dict) > 0:
-                set_my = set(my_dict.keys())
-                set_start = set(start_dict.keys())
-                for taxa in (set_my & set_start):
-                    seq_size = len(my_dict[taxa].seq)
-                    base_size = len(start_dict[taxa].seq)
-                    start_dict[taxa].seq = Seq(str(start_dict[taxa].seq) + str(my_dict[taxa].seq))
-                for taxa in (set_my - set_start):
-                    start_dict[taxa] = my_dict[taxa]
-                    start_dict[taxa].seq = Seq(("N"*base_size) + str(my_dict[taxa].seq))
-                for taxa in (set_start - set_my):
-                    start_dict[taxa].seq = Seq(str(start_dict[taxa].seq) + "N"*seq_size)
-            else:
-                start_dict = my_dict
-                pass
-            stop += len(my_dict[list(my_dict.keys())[0]].seq)
-            bed_row = bed_file[bed_file[3].str.contains(id)]
-            bed_index.append((bed_row.iloc[0][0], start, stop, id))
-            start = stop+1
-            counter += 1
+    my_dict = SeqIO.to_dict(SeqIO.parse(each_file, "fasta"))
+    id = os.path.splitext(os.path.basename(each_file))[0]
+    if len(my_dict) >= (args.per_taxa*args.n_taxa):          
+        if len(start_dict) > 0:
+            set_my = set(my_dict.keys())
+            set_start = set(start_dict.keys())
+            for taxa in (set_my & set_start):
+                seq_size = len(my_dict[taxa].seq)
+                base_size = len(start_dict[taxa].seq)
+                start_dict[taxa].seq = Seq(str(start_dict[taxa].seq) + str(my_dict[taxa].seq))
+            for taxa in (set_my - set_start):
+                start_dict[taxa] = my_dict[taxa]
+                start_dict[taxa].seq = Seq(("N"*base_size) + str(my_dict[taxa].seq))
+            for taxa in (set_start - set_my):
+                start_dict[taxa].seq = Seq(str(start_dict[taxa].seq) + "N"*seq_size)
         else:
-            print ("Omitting "+id+":too few taxa in alignment; "+str(len(my_dict))+" of "+str(args.n_taxa))  
+            start_dict = my_dict
+            pass
+        stop += len(my_dict[list(my_dict.keys())[0]].seq)
+        bed_row = bed_file[bed_file[3].str.contains(id)]
+        bed_index.append((bed_row.iloc[0][0], start, stop, id))
+        start = stop+1
+        counter += 1
+    else:
+        print ("Omitting "+id+":too few taxa in alignment; "+str(len(my_dict))+" of "+str(args.n_taxa))  
             
 list2bed(bed_index, args.output_folder)
 dict2fa(start_dict, args.output_folder, end=True)
